@@ -9,6 +9,8 @@ mcp = MCPServer(name="platform-ops")
 ALLOWED_RESOURCES = {"pods", "deployments", "services", "nodes", "events", "namespaces"}
 # NEW: valid Kubernetes namespace names: lowercase letters, digits, dashes
 NAMESPACE_PATTERN = re.compile(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?")
+# Kubernetes object names: lowercase letters, digits, dashes, dots
+NAME_PATTERN = re.compile(r"[a-z0-9]([-a-z0-9.]*[a-z0-9])?")
 
 
 @mcp.tool()
@@ -30,6 +32,33 @@ def kubectl_get(resource: str, namespace: str = "default") -> str:
         return f"Refused: '{namespace}' is not a valid namespace name."
 
     command = ["kubectl", "get", resource, "-n", namespace]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+    except FileNotFoundError:
+        return "Error: kubectl is not installed or not on PATH."
+    except subprocess.TimeoutExpired:
+        return "Error: kubectl took longer than 30 seconds."
+    return result.stdout or result.stderr
+
+
+@mcp.tool()
+def kubectl_describe(resource: str, name: str, namespace: str = "default") -> str:
+    """Show details and recent events for one Kubernetes object (read-only),
+    like `kubectl describe pod my-app -n default`. Use this to find out WHY
+    something is failing.
+
+    resource: one of pods, deployments, services, nodes, events, namespaces.
+    name: the object's name, e.g. a pod name from kubectl_get.
+    namespace: the Kubernetes namespace (default: "default").
+    """
+    if resource not in ALLOWED_RESOURCES:
+        return f"Refused: '{resource}' is not allowed. Allowed: {', '.join(sorted(ALLOWED_RESOURCES))}"
+    if not NAME_PATTERN.fullmatch(name):
+        return f"Refused: '{name}' is not a valid object name."
+    if not NAMESPACE_PATTERN.fullmatch(namespace):
+        return f"Refused: '{namespace}' is not a valid namespace name."
+
+    command = ["kubectl", "describe", resource, name, "-n", namespace]
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=30)
     except FileNotFoundError:
