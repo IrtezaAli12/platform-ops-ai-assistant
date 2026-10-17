@@ -26,6 +26,10 @@ def test_get_allows_valid_input():
 
 # --- kubectl_describe ---
 
+def test_describe_refuses_secrets():
+    assert server.kubectl_describe("secrets", "db-password").startswith("Refused")
+
+
 def test_describe_refuses_option_as_name():
     assert server.kubectl_describe("pods", "--all-namespaces").startswith("Refused")
 
