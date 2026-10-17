@@ -13,6 +13,22 @@ NAMESPACE_PATTERN = re.compile(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?")
 NAME_PATTERN = re.compile(r"[a-z0-9]([-a-z0-9.]*[a-z0-9])?")
 
 
+def run_kubectl(args: list[str]) -> str:
+    """Run kubectl with the given arguments and return its output as text.
+
+    Not an MCP tool: the AI can't call this directly, only our tools can,
+    after they've checked their inputs.
+    """
+    command = ["kubectl", *args]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+    except FileNotFoundError:
+        return "Error: kubectl is not installed or not on PATH."
+    except subprocess.TimeoutExpired:
+        return "Error: kubectl took longer than 30 seconds."
+    return result.stdout or result.stderr
+
+
 @mcp.tool()
 def ping() -> str:
     """Health check. Returns 'pong' so you can confirm the server is reachable."""
@@ -31,14 +47,7 @@ def kubectl_get(resource: str, namespace: str = "default") -> str:
     if not NAMESPACE_PATTERN.fullmatch(namespace):
         return f"Refused: '{namespace}' is not a valid namespace name."
 
-    command = ["kubectl", "get", resource, "-n", namespace]
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
-    except FileNotFoundError:
-        return "Error: kubectl is not installed or not on PATH."
-    except subprocess.TimeoutExpired:
-        return "Error: kubectl took longer than 30 seconds."
-    return result.stdout or result.stderr
+    return run_kubectl(["get", resource, "-n", namespace])
 
 
 @mcp.tool()
@@ -58,14 +67,7 @@ def kubectl_describe(resource: str, name: str, namespace: str = "default") -> st
     if not NAMESPACE_PATTERN.fullmatch(namespace):
         return f"Refused: '{namespace}' is not a valid namespace name."
 
-    command = ["kubectl", "describe", resource, name, "-n", namespace]
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
-    except FileNotFoundError:
-        return "Error: kubectl is not installed or not on PATH."
-    except subprocess.TimeoutExpired:
-        return "Error: kubectl took longer than 30 seconds."
-    return result.stdout or result.stderr
+    return run_kubectl(["describe", resource, name, "-n", namespace])
 
 
 @mcp.tool()
@@ -86,16 +88,10 @@ def kubectl_logs(name: str, namespace: str = "default", tail_lines: int = 100, p
     if not 1 <= tail_lines <= 500:
         return f"Refused: tail_lines must be between 1 and 500, got {tail_lines}."
 
-    command = ["kubectl", "logs", name, "-n", namespace, f"--tail={tail_lines}"]
+    args = ["logs", name, "-n", namespace, f"--tail={tail_lines}"]
     if previous:
-        command.append("--previous")
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
-    except FileNotFoundError:
-        return "Error: kubectl is not installed or not on PATH."
-    except subprocess.TimeoutExpired:
-        return "Error: kubectl took longer than 30 seconds."
-    return result.stdout or result.stderr
+        args.append("--previous")
+    return run_kubectl(args)
 
 
 if __name__ == "__main__":
