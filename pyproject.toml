@@ -1,3 +1,25 @@
+[project]
+name = "platform-ops-ai-assistant"
+version = "0.1.0"
+description = "Read-only MCP server and Claude agent for troubleshooting Kubernetes"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=2.3,<3",
+    "anthropic>=1.15,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["server", "agent"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
