@@ -38,6 +38,26 @@ def test_connect_requires_database_url(monkeypatch):
         rag.connect()
 
 
+def test_connect_uses_database_url_from_environment(monkeypatch):
+    calls = []
+
+    class FakeConnection:
+        def execute(self, sql):
+            calls.append(sql)
+
+    def fake_connect(url, autocommit):
+        calls.append(url)
+        return FakeConnection()
+
+    monkeypatch.setenv("RUNBOOKS_DATABASE_URL", "postgresql://db.example/runbooks")
+    monkeypatch.setattr(rag.psycopg, "connect", fake_connect)
+    monkeypatch.setattr(rag, "register_vector", lambda conn: calls.append("register_vector"))
+
+    rag.connect()
+
+    assert calls == ["postgresql://db.example/runbooks", "CREATE EXTENSION IF NOT EXISTS vector", "register_vector"]
+
+
 def test_to_claude_tool_converts_mcp_tool():
     tools = {tool.name: tool for tool in asyncio.run(server.mcp.list_tools())}
     converted = agent.to_claude_tool(tools["kubectl_get"])
