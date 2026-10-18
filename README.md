@@ -11,7 +11,7 @@ Platform troubleshooting means jumping between kubectl, Terraform and runbooks. 
 - [x] **RAG:** embed runbooks into PostgreSQL + pgvector; agent retrieves relevant context
 - [x] **Agent:** LLM client that chains tool calls + retrieved context to diagnose issues
 - [x] **CI/CD:** GitHub Actions with linting, tests and SonarQube quality gate
-- [ ] **Container:** Dockerfile + deployment manifest
+- [x] **Container:** Dockerfile + deployment manifest
 
 ## How to run
 
@@ -64,6 +64,27 @@ the server answers to (DNS rebinding protection).
 **Security note:** the HTTP endpoint has no authentication yet. All tools are read-only, but
 only expose it on a trusted network (localhost or inside the cluster), never publicly.
 
+## Deploy the MCP server to Kubernetes
+
+`deploy/mcp-server.yaml` runs the server in the cluster with its own ServiceAccount and a
+read-only ClusterRole (get/list only, no Secrets), so Kubernetes enforces read-only access
+as a second safety layer behind the server's own input checks. The pod runs as non-root with a
+read-only root filesystem and all Linux capabilities dropped.
+
+```powershell
+docker build -t platform-ops-mcp:dev .
+kind load docker-image platform-ops-mcp:dev --name platform-ops
+kubectl apply -f deploy/
+
+# Reach it from your laptop through a private tunnel, then run the agent
+kubectl -n platform-ops-mcp port-forward service/mcp-server 8000:8000
+$env:MCP_SERVER_URL = "http://127.0.0.1:8000/mcp"
+uv run agent.py
+```
+
+Inside the cluster, `terraform_plan` is not available (no Terraform state in the image) and
+`search_runbooks` cannot reach the laptop-only runbook database.
+
 ## Project layout
 
 | Path | What it is |
@@ -75,9 +96,13 @@ only expose it on a trusted network (localhost or inside the cluster), never pub
 | `k8s/` | Deliberately broken demo apps |
 | `terraform/` | Terraform config used for drift detection |
 | `tests/` | pytest suite for the tools' safety checks |
+| `Dockerfile` | Container image for the MCP server |
+| `deploy/` | Kubernetes manifests to run the MCP server with read-only RBAC |
+| `.github/workflows/ci.yml` | CI: ruff, tests with coverage, SonarQube Cloud analysis |
 
 ## Tech
 Python · MCP · LLMs · RAG · pgvector/PostgreSQL · Kubernetes · Terraform · Docker · GitHub Actions · SonarQube
 
 ## Status
-🚧 In progress
+✅ All roadmap items done. Possible next steps: authentication for the HTTP endpoint, running the
+runbook database inside the cluster, and evaluating the agent's answers over a fixed set of scenarios.

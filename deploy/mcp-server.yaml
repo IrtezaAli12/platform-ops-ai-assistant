@@ -1,0 +1,113 @@
+# Runs the read-only MCP server inside the cluster.
+# RBAC below is a second safety layer: even if the server's own checks had a bug,
+# Kubernetes itself only allows reading these resources (and never Secrets).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform-ops-mcp
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-server
+  namespace: platform-ops-mcp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: mcp-server-read-only
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "nodes", "events", "namespaces", "resourcequotas", "limitranges"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mcp-server-read-only
+subjects:
+  - kind: ServiceAccount
+    name: mcp-server
+    namespace: platform-ops-mcp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: mcp-server-read-only
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server
+  namespace: platform-ops-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-server
+  template:
+    metadata:
+      labels:
+        app: mcp-server
+    spec:
+      serviceAccountName: mcp-server
+      automountServiceAccountToken: true # kubectl inside the pod needs it; limited by the ClusterRole above
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mcp-server
+          image: platform-ops-mcp:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MCP_TRANSPORT
+              value: http
+            - name: MCP_ALLOWED_HOSTS
+              value: "mcp-server.platform-ops-mcp.svc.cluster.local:*,mcp-server.platform-ops-mcp:*,mcp-server:*,localhost:*,127.0.0.1:*"
+            - name: HOME
+              value: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+              ephemeral-storage: 100Mi
+            limits:
+              memory: 768Mi
+              ephemeral-storage: 500Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            periodSeconds: 5
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 400Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-server
+  namespace: platform-ops-mcp
+spec:
+  selector:
+    app: mcp-server
+  ports:
+    - port: 8000
+      targetPort: 8000
