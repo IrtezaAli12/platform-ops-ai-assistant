@@ -124,6 +124,7 @@ def search_runbooks(query: str) -> str:
         return "Refused: query must be between 3 and 300 characters."
     try:
         import rag  # loaded only when needed: the embedding model is slow to load
+
         results = rag.search(query)
     except Exception as error:
         return f"Error: runbook search is unavailable ({type(error).__name__})."

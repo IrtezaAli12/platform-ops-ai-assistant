@@ -2,6 +2,7 @@
 
 Run `python rag.py` to (re)build the index after changing anything in runbooks/.
 """
+
 import os
 from pathlib import Path
 
@@ -11,15 +12,13 @@ import truststore
 # proxy inspects HTTPS, e.g. for the one-time embedding model download).
 truststore.inject_into_ssl()
 
-import psycopg  # noqa: E402  (must come after inject_into_ssl)
+import psycopg
 from fastembed import TextEmbedding
 from pgvector.psycopg import register_vector
 
 RUNBOOK_DIR = Path(__file__).parent / "runbooks"
 # Local-only development database (see "How to run" in the README).
-DATABASE_URL = os.environ.get(
-    "RUNBOOKS_DATABASE_URL", "postgresql://runbooks:runbooks-dev@127.0.0.1:5432/runbooks"
-)
+DATABASE_URL = os.environ.get("RUNBOOKS_DATABASE_URL", "postgresql://runbooks:runbooks-dev@127.0.0.1:5432/runbooks")
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"  # small local model: 384 numbers per text
 EMBEDDING_SIZE = 384
 
@@ -73,7 +72,7 @@ def index_runbooks() -> int:
         with conn.cursor() as cur:
             cur.executemany(
                 "INSERT INTO runbook_sections (source, content, embedding) VALUES (%s, %s, %s)",
-                [(source, content, emb) for (source, content), emb in zip(rows, embeddings)],
+                [(source, content, emb) for (source, content), emb in zip(rows, embeddings, strict=True)],
             )
     return len(rows)
 

@@ -61,12 +61,14 @@ async def investigate(question: str) -> None:
                     print(f"[turn {turn}] Claude calls {block.name}({block.input})")
                     result = await session.call_tool(block.name, block.input)
                     text = "\n".join(c.text for c in result.content if c.type == "text")
-                    results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": text,
-                        "is_error": bool(result.is_error),
-                    })
+                    results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": text,
+                            "is_error": bool(result.is_error),
+                        }
+                    )
                 messages.append({"role": "user", "content": results})
             else:
                 print(f"\nStopped after {MAX_TURNS} turns without a final answer.")

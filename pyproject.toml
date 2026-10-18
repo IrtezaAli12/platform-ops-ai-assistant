@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1",
+    "ruff>=0.17",
 ]
 
 [build-system]
@@ -23,6 +24,20 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 py-modules = ["server", "agent", "rag"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+# E/W: style errors and warnings, F: likely bugs (unused imports, undefined names),
+# I: sorted imports, B: common bug patterns, UP: modern Python syntax
+select = ["E", "W", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# rag.py imports some libraries after truststore.inject_into_ssl() on purpose,
+# so their HTTPS downloads use the operating system's certificate list.
+"rag.py" = ["E402"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -5,8 +5,8 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 import server
 
-
 # --- kubectl_get ---
+
 
 def test_get_refuses_secrets():
     assert server.kubectl_get("secrets").startswith("Refused")
@@ -26,6 +26,7 @@ def test_get_allows_valid_input():
 
 # --- kubectl_describe ---
 
+
 def test_describe_refuses_secrets():
     assert server.kubectl_describe("secrets", "db-password").startswith("Refused")
 
@@ -43,6 +44,7 @@ def test_describe_allows_name_with_dot():
 
 
 # --- kubectl_logs ---
+
 
 def test_logs_refuses_option_as_name():
     assert server.kubectl_logs("--follow").startswith("Refused")
@@ -63,6 +65,7 @@ def test_logs_rejects_text_as_line_count():
 
 # --- search_runbooks ---
 
+
 def test_search_runbooks_refuses_empty_query():
     assert server.search_runbooks("").startswith("Refused")
 
@@ -72,6 +75,7 @@ def test_search_runbooks_refuses_huge_query():
 
 
 # --- what the AI can see ---
+
 
 def test_helper_is_not_exposed_to_ai():
     names = [tool.name for tool in asyncio.run(server.mcp.list_tools())]
