@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1",
+    "pytest-cov>=7",
     "ruff>=0.17",
 ]
 
@@ -38,6 +39,14 @@ select = ["E", "W", "F", "I", "B", "UP"]
 # rag.py imports some libraries after truststore.inject_into_ssl() on purpose,
 # so their HTTPS downloads use the operating system's certificate list.
 "rag.py" = ["E402"]
+
+[tool.coverage.run]
+source = ["."]
+omit = ["tests/*", ".venv/*"]
+
+[tool.coverage.report]
+# Lines that only run when a file is started directly, not when it is imported by tests.
+exclude_also = ['if __name__ == "__main__":']
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

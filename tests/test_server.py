@@ -5,6 +5,13 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 import server
 
+# --- ping ---
+
+
+def test_ping_returns_pong():
+    assert server.ping() == "pong"
+
+
 # --- kubectl_get ---
 
 
@@ -48,6 +55,10 @@ def test_describe_allows_name_with_dot():
 
 def test_logs_refuses_option_as_name():
     assert server.kubectl_logs("--follow").startswith("Refused")
+
+
+def test_logs_refuses_bad_namespace():
+    assert server.kubectl_logs("my-app", "Bad_NS").startswith("Refused")
 
 
 def test_logs_refuses_too_many_lines():
