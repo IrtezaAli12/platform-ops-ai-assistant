@@ -1,5 +1,6 @@
 import re  # NEW
 import subprocess  # NEW
+from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
 
@@ -11,22 +12,28 @@ ALLOWED_RESOURCES = {"pods", "deployments", "services", "nodes", "events", "name
 NAMESPACE_PATTERN = re.compile(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?")
 # Kubernetes object names: lowercase letters, digits, dashes, dots
 NAME_PATTERN = re.compile(r"[a-z0-9]([-a-z0-9.]*[a-z0-9])?")
+# The only Terraform folder the AI may plan, fixed in code.
+TERRAFORM_DIR = Path(__file__).parent / "terraform"
 
 
-def run_kubectl(args: list[str]) -> str:
-    """Run kubectl with the given arguments and return its output as text.
+def run_command(command: list[str], timeout: int = 30) -> str:
+    """Run a program and return its output as text.
 
     Not an MCP tool: the AI can't call this directly, only our tools can,
     after they've checked their inputs.
     """
-    command = ["kubectl", *args]
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
     except FileNotFoundError:
-        return "Error: kubectl is not installed or not on PATH."
+        return f"Error: {command[0]} is not installed or not on PATH."
     except subprocess.TimeoutExpired:
-        return "Error: kubectl took longer than 30 seconds."
+        return f"Error: {command[0]} took longer than {timeout} seconds."
     return result.stdout or result.stderr
+
+
+def run_kubectl(args: list[str]) -> str:
+    """Run kubectl with the given arguments and return its output as text. Not an MCP tool."""
+    return run_command(["kubectl", *args])
 
 
 @mcp.tool()
@@ -92,6 +99,18 @@ def kubectl_logs(name: str, namespace: str = "default", tail_lines: int = 100, p
     if previous:
         args.append("--previous")
     return run_kubectl(args)
+
+
+@mcp.tool()
+def terraform_plan() -> str:
+    """Preview (read-only) what Terraform would change in the cluster, like
+    `terraform plan`. Use this to check for drift: whether the cluster still
+    matches the Terraform code. "No changes" means they match.
+    """
+    return run_command(
+        ["terraform", f"-chdir={TERRAFORM_DIR}", "plan", "-no-color", "-input=false", "-lock=false"],
+        timeout=120,
+    )
 
 
 if __name__ == "__main__":

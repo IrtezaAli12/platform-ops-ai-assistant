@@ -66,3 +66,14 @@ def test_logs_rejects_text_as_line_count():
 def test_helper_is_not_exposed_to_ai():
     names = [tool.name for tool in asyncio.run(server.mcp.list_tools())]
     assert "run_kubectl" not in names
+    assert "run_command" not in names
+
+
+def test_terraform_plan_is_exposed_to_ai():
+    names = [tool.name for tool in asyncio.run(server.mcp.list_tools())]
+    assert "terraform_plan" in names
+
+
+def test_terraform_plan_takes_no_inputs():
+    tools = {tool.name: tool for tool in asyncio.run(server.mcp.list_tools())}
+    assert tools["terraform_plan"].input_schema.get("properties", {}) == {}

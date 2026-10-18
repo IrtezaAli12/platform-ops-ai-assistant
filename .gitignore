@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Terraform: provider downloads and state (state can contain secrets)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
