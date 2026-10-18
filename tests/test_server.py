@@ -61,6 +61,16 @@ def test_logs_rejects_text_as_line_count():
         asyncio.run(server.mcp.call_tool("kubectl_logs", {"name": "my-app", "tail_lines": "all"}))
 
 
+# --- search_runbooks ---
+
+def test_search_runbooks_refuses_empty_query():
+    assert server.search_runbooks("").startswith("Refused")
+
+
+def test_search_runbooks_refuses_huge_query():
+    assert server.search_runbooks("x" * 301).startswith("Refused")
+
+
 # --- what the AI can see ---
 
 def test_helper_is_not_exposed_to_ai():

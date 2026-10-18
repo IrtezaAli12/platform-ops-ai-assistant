@@ -12,6 +12,7 @@ SYSTEM_PROMPT = """You are a Kubernetes troubleshooting assistant for a platform
 You can only READ the cluster, using the tools you are given. You cannot change anything.
 Investigate step by step: list what is there, look closer at anything unhealthy,
 and read logs when the reason isn't visible in the description.
+Before recommending a fix, search the runbooks and follow the team's rules and contacts you find there.
 Finish with a short report: the root cause, the evidence you found, and the fix a human should apply."""
 
 

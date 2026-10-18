@@ -6,12 +6,53 @@ AI assistant for platform operations: a Python **MCP (Model Context Protocol)** 
 Platform troubleshooting means jumping between kubectl, Terraform and runbooks. This project lets an LLM agent do that safely, with read-only access only and no mutating commands.
 
 ## Roadmap
-- [ ] **MCP server (Python):** read-only tools: `kubectl get`, `kubectl describe`, `kubectl logs`, `terraform plan`
-- [ ] **Local cluster:** kind/k3s with a sample app to troubleshoot
-- [ ] **RAG:** embed runbooks into PostgreSQL + pgvector; agent retrieves relevant context
-- [ ] **Agent:** LLM client that chains tool calls + retrieved context to diagnose issues
+- [x] **MCP server (Python):** read-only tools: `kubectl get`, `kubectl describe`, `kubectl logs`, `terraform plan`
+- [x] **Local cluster:** kind with sample apps to troubleshoot
+- [x] **RAG:** embed runbooks into PostgreSQL + pgvector; agent retrieves relevant context
+- [x] **Agent:** LLM client that chains tool calls + retrieved context to diagnose issues
 - [ ] **CI/CD:** GitHub Actions with linting, tests and SonarQube quality gate
 - [ ] **Container:** Dockerfile + deployment manifest
+
+## How to run
+
+Prerequisites: Python 3.10+, Docker, [kind](https://kind.sigs.k8s.io/), kubectl, Terraform,
+and an Anthropic API key in the `ANTHROPIC_API_KEY` environment variable.
+
+```powershell
+# 1. Python environment
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+
+# 2. Local Kubernetes cluster with the broken demo apps
+kind create cluster --name platform-ops
+kubectl apply -f k8s/
+
+# 3. Terraform-managed resources (used for drift detection)
+terraform -chdir=terraform init
+terraform -chdir=terraform apply
+
+# 4. Runbook database (local only) and index
+docker run -d --name platform-ops-pgvector -e POSTGRES_USER=runbooks -e POSTGRES_PASSWORD=runbooks-dev -e POSTGRES_DB=runbooks -p 127.0.0.1:5432:5432 -v platform-ops-pgdata:/var/lib/postgresql/data pgvector/pgvector:pg17
+.\.venv\Scripts\python.exe rag.py
+
+# 5. Ask the agent
+.\.venv\Scripts\python.exe agent.py "Something is broken in the 'demo' namespace. What is wrong?"
+
+# Tests
+.\.venv\Scripts\python.exe -m pytest -v
+```
+
+## Project layout
+
+| Path | What it is |
+|---|---|
+| `server.py` | MCP server with read-only tools: `kubectl_get`, `kubectl_describe`, `kubectl_logs`, `terraform_plan`, `search_runbooks` |
+| `agent.py` | Claude agent that investigates by calling the MCP tools |
+| `rag.py` | Runbook indexing and search (local embeddings + pgvector) |
+| `runbooks/` | Team runbooks the agent searches |
+| `k8s/` | Deliberately broken demo apps |
+| `terraform/` | Terraform config used for drift detection |
+| `tests/` | pytest suite for the tools' safety checks |
 
 ## Tech
 Python · MCP · LLMs · RAG · pgvector/PostgreSQL · Kubernetes · Terraform · Docker · GitHub Actions · SonarQube

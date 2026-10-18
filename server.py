@@ -113,5 +113,22 @@ def terraform_plan() -> str:
     )
 
 
+@mcp.tool()
+def search_runbooks(query: str) -> str:
+    """Search the team's runbooks for internal rules, owners and escalation
+    contacts. Use this BEFORE recommending a fix, so the advice follows team policy.
+
+    query: a short description of the problem, e.g. "pod crashes, DATABASE_URL missing".
+    """
+    if not 3 <= len(query) <= 300:
+        return "Refused: query must be between 3 and 300 characters."
+    try:
+        import rag  # loaded only when needed: the embedding model is slow to load
+        results = rag.search(query)
+    except Exception as error:
+        return f"Error: runbook search is unavailable ({type(error).__name__})."
+    return "\n\n---\n\n".join(f"[{source}]\n{content}" for source, content, _ in results)
+
+
 if __name__ == "__main__":
     mcp.run()  # default transport is stdio
