@@ -1,14 +1,16 @@
-import re  # NEW
-import subprocess  # NEW
+import os
+import re
+import subprocess
 from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
 
 mcp = MCPServer(name="platform-ops")
 
-# NEW: the only resource types the AI may list
+# The only resource types the AI may list
 ALLOWED_RESOURCES = {"pods", "deployments", "services", "nodes", "events", "namespaces"}
-# NEW: valid Kubernetes namespace names: lowercase letters, digits, dashes
+# Valid Kubernetes namespace names: lowercase letters, digits, dashes
 NAMESPACE_PATTERN = re.compile(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?")
 # Kubernetes object names: lowercase letters, digits, dashes, dots
 NAME_PATTERN = re.compile(r"[a-z0-9]([-a-z0-9.]*[a-z0-9])?")
@@ -42,7 +44,7 @@ def ping() -> str:
     return "pong"
 
 
-@mcp.tool()  # NEW (whole function)
+@mcp.tool()
 def kubectl_get(resource: str, namespace: str = "default") -> str:
     """List Kubernetes resources (read-only), like `kubectl get pods -n default`.
 
@@ -132,4 +134,15 @@ def search_runbooks(query: str) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run()  # default transport is stdio
+    if os.environ.get("MCP_TRANSPORT") == "http":
+        # In a container: listen on all network interfaces, but only answer requests
+        # addressed to the host names we expect (DNS rebinding protection).
+        allowed_hosts = os.environ.get("MCP_ALLOWED_HOSTS", "localhost:*,127.0.0.1:*").split(",")
+        mcp.run(
+            "streamable-http",
+            host="0.0.0.0",
+            port=8000,
+            transport_security=TransportSecuritySettings(allowed_hosts=allowed_hosts),
+        )
+    else:
+        mcp.run()  # default: stdio
