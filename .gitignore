@@ -219,6 +219,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Sonar scanner work folder
+.scannerwork/
+
 # Terraform: provider downloads and state (state can contain secrets)
 .terraform/
 *.tfstate
