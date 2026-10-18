@@ -18,6 +18,15 @@ spec:
       labels:
         app: web
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: web
           image: nginx:1.27-alpinee
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+              ephemeral-storage: 50Mi
+            limits:
+              memory: 64Mi
+              ephemeral-storage: 100Mi
