@@ -17,8 +17,6 @@ from fastembed import TextEmbedding
 from pgvector.psycopg import register_vector
 
 RUNBOOK_DIR = Path(__file__).parent / "runbooks"
-# Local-only development database (see "How to run" in the README).
-DATABASE_URL = os.environ.get("RUNBOOKS_DATABASE_URL", "postgresql://runbooks:runbooks-dev@127.0.0.1:5432/runbooks")
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"  # small local model: 384 numbers per text
 EMBEDDING_SIZE = 384
 
@@ -34,7 +32,11 @@ def get_model() -> TextEmbedding:
 
 
 def connect() -> psycopg.Connection:
-    conn = psycopg.connect(DATABASE_URL, autocommit=True)
+    # The database address (including its password) comes from the environment, never from code.
+    database_url = os.environ.get("RUNBOOKS_DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("RUNBOOKS_DATABASE_URL is not set. See 'How to run' in the README.")
+    conn = psycopg.connect(database_url, autocommit=True)
     conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
     register_vector(conn)
     return conn
