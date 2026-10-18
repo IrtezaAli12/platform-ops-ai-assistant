@@ -15,14 +15,13 @@ Platform troubleshooting means jumping between kubectl, Terraform and runbooks. 
 
 ## How to run
 
-Prerequisites: Python 3.10+, Docker, [kind](https://kind.sigs.k8s.io/), kubectl, Terraform,
+Prerequisites: Python 3.10+, [uv](https://docs.astral.sh/uv/), Docker, [kind](https://kind.sigs.k8s.io/), kubectl, Terraform,
 an Anthropic API key in the `ANTHROPIC_API_KEY` environment variable, and the runbook
 database address in `RUNBOOKS_DATABASE_URL` (see step 4).
 
 ```powershell
-# 1. Python environment
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+# 1. Python environment: installs exactly the versions in uv.lock
+uv sync --extra dev
 
 # 2. Local Kubernetes cluster with the broken demo apps
 kind create cluster --name platform-ops
@@ -35,13 +34,14 @@ terraform -chdir=terraform apply
 # 4. Runbook database (local only) and index. Pick your own password for <password>.
 docker run -d --name platform-ops-pgvector -e POSTGRES_USER=runbooks -e POSTGRES_PASSWORD=<password> -e POSTGRES_DB=runbooks -p 127.0.0.1:5432:5432 -v platform-ops-pgdata:/var/lib/postgresql/data pgvector/pgvector:pg17
 $env:RUNBOOKS_DATABASE_URL = "postgresql://runbooks:<password>@127.0.0.1:5432/runbooks"
-.\.venv\Scripts\python.exe rag.py
+uv run rag.py
 
 # 5. Ask the agent
-.\.venv\Scripts\python.exe agent.py "Something is broken in the 'demo' namespace. What is wrong?"
+uv run agent.py "Something is broken in the 'demo' namespace. What is wrong?"
 
-# Tests
-.\.venv\Scripts\python.exe -m pytest -v
+# Tests and lint
+uv run pytest -v
+uv run ruff check .
 ```
 
 ## Project layout
