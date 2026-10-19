@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 import anthropic
 from mcp import ClientSession
-from mcp.client.stdio import StdioServerParameters, stdio_client
+from mcp.client.stdio import StdioServerParameters, get_default_environment, stdio_client
 from mcp.client.streamable_http import streamable_http_client
 
 MODEL = "claude-opus-5-5"
@@ -28,6 +28,18 @@ def to_claude_tool(tool):
     }
 
 
+def server_environment() -> dict[str, str]:
+    """Settings for the local server.py process.
+
+    The MCP library passes only basic variables (like PATH) to the server for safety,
+    so the runbook database address has to be handed over explicitly.
+    """
+    env = get_default_environment()
+    if "RUNBOOKS_DATABASE_URL" in os.environ:
+        env["RUNBOOKS_DATABASE_URL"] = os.environ["RUNBOOKS_DATABASE_URL"]
+    return env
+
+
 @asynccontextmanager
 async def open_mcp_session():
     """Connect to the MCP server.
@@ -39,7 +51,9 @@ async def open_mcp_session():
     if url:
         transport = streamable_http_client(url)
     else:
-        transport = stdio_client(StdioServerParameters(command=sys.executable, args=["server.py"]))
+        transport = stdio_client(
+            StdioServerParameters(command=sys.executable, args=["server.py"], env=server_environment())
+        )
     async with transport as (read, write), ClientSession(read, write) as session:
         await session.initialize()
         yield session

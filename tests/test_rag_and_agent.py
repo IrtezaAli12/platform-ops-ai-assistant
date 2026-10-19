@@ -76,6 +76,18 @@ def test_open_mcp_session_starts_local_server_over_stdio(monkeypatch):
     assert "kubectl_get" in tool_names_from_open_session()
 
 
+def test_server_environment_passes_runbook_database_url(monkeypatch):
+    monkeypatch.setenv("RUNBOOKS_DATABASE_URL", "postgresql://db.example/runbooks")
+    env = agent.server_environment()
+    assert env["RUNBOOKS_DATABASE_URL"] == "postgresql://db.example/runbooks"
+    assert "PATH" in env or "Path" in env
+
+
+def test_server_environment_without_runbook_database_url(monkeypatch):
+    monkeypatch.delenv("RUNBOOKS_DATABASE_URL", raising=False)
+    assert "RUNBOOKS_DATABASE_URL" not in agent.server_environment()
+
+
 def test_open_mcp_session_uses_http_when_url_is_set(monkeypatch):
     urls = []
 
